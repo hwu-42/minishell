@@ -1,0 +1,23 @@
+#!/bin/bash
+
+myapp="tr2"
+
+# Define an array of test strings
+test_strings=("test1" "example input" "another test string" "special characters: !@#$%^&*()" "a very long input string that should be tested for handling long inputs" "")
+
+# Create a named pipe
+pipe_name="mypipe"
+mkfifo $pipe_name
+
+# Start myapp in the background, reading from the named pipe
+./$(myapp) < $pipe_name &
+
+# Send test strings to the named pipe
+for test_string in "${test_strings[@]}"; do
+    echo "$test_string" > $pipe_name
+    sleep 1  # Adjust the sleep time as needed
+done
+
+# Clean up
+rm $pipe_name
+
