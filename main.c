@@ -7,49 +7,6 @@ size_t  max(size_t a, size_t b)
     return (b);
 }
 
-/*
-//enhanced ver
-//return 1 for enclosed, 0 for unenclosed
-int    check_enclosed(char *s, char **eof)
-{
-    while(*s != 0 && *s != 39 && *s != 34 && *s != '<')
-        s++;
-    if (*s == 39)
-    {
-        s++;
-        while(*s && *s != 39)
-            s++;
-        if (*s == 0)
-            return (0);
-        else
-        {
-            if (*(s + 1) == 0)
-                return (1);
-            else
-                return(check_enclosed(s + 1));
-        }
-    }
-    else if (*s == 34)
-    {
-        s++;
-        while(*s && *s != 34)
-            s++;
-        if (*s == 0)
-            return (0);
-        else
-        {
-            if (*(s + 1) == 0)
-                return (1);
-            else
-               return(check_enclosed(s + 1));
-        }
-    }
-    else if (*s == '<' && *(s + 1) == '<')
-        return (check_here_doc(s));
-    else
-        return (1);
-}*/
-
 //tbc to release memory
 int clean_exit(void)
 {
@@ -198,27 +155,66 @@ int dif_str(char *s, char *t)
     }
 }
 
+int heap_env(t_d *d)
+{
+    int i;
+    char    **key;
+    char    **nvs;
+
+    i = 0;
+    key = *(d->env);
+    while (*key)
+    {
+        i++;
+        key++;
+    }
+    nvs = malloc(sizeof(char *) * (i + 1));
+    if (nvs == NULL)
+        return (0);
+    nvs[i] = NULL;
+    key = *(d->env);
+    *(d->env) = nvs;
+    while (*key)
+        *nvs++ = ft_strdup(*key++);
+    return (1);
+}
+
 int main(int argc, char **argv, char **envp)
 {
     char    *input;
+    t_d     data;
 //    char    *temp = NULL;
 //    char    **args;
 //    char    *eof;
 
     if (argc > 0)
         argv[0] = argv[0];
-    printf("%s\n", *(envp++));
+    data.env = &envp;
+    if(!heap_env(&data))
+        exit(1);
+    prt_env(&data); //debug
+    while (1)
+    {
+        data.s = readline("new env to edd:\n");
+        if (*(data.s) == 0)
+            break;
+        export_env(&data);
+        prt_env(&data);
+    }
+    while (1)
+    {
+        data.s = readline("env to unset:\n");
+        if (*(data.s) == 0)
+            break;
+        unset_env(&data);
+        prt_env(&data);
+    }
     printf("main: will call get command\n");//debug
     input = get_command();
     while (strcmp(strimmed(input), "exit"))
     {
         if (*strimmed(input))
             add_history(strimmed(input));
-            /*
-        printsini(input);//debug
-        printf("\n");//debug
-        printsini(strimmed(input));//debug
-        */
         printf("%s\n", input);
         free (input);
         input = get_command();

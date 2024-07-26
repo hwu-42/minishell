@@ -13,15 +13,19 @@
 #include <readline/history.h>
 #define MAXMM 1024
 
-/*
-//syn = 1 for ', 2 for ", 3 for <<
-typedef struct s_unclosed_syntex
+typedef struct s_data
 {
-    t_unclose   *next;
-    t_unclose   *last;
+    char    ***env;
+    char    *s;
     int         syn;
     int         used;
-}   t_unclose;*/
+}   t_d;
+
+typedef struct s_string_list
+{
+    struct s_string_list     *next;
+    char    *s;
+}   t_s;
 
 /*
 void    mfree(void * p);
@@ -33,5 +37,10 @@ void    clean_heaps(void ***p);
 char    *get_command(void);
 char    *unclosed_eofs(int add, char *eof);
 int     dif_str(char *s, char *t);
+
+void    prt_env(t_d *d);
+int     export_env(t_d *d);
+int     unset_env(t_d *d);
+int     white_space(char c);
 
 #endif
