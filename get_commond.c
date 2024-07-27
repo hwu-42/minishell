@@ -234,6 +234,7 @@ char    *get_command(void)
             tt = ft_strjoin(temp, input);
             free(temp);
             free(input);
+            printf("%s\n", tt);//debug
             return (tt);
             //return (ft_strjoin(temp, input));
         }//debug

@@ -199,7 +199,6 @@ int main(int argc, char **argv, char **envp)
         if (*(data.s) == 0)
             break;
         export_env(&data);
-        prt_env(&data);
     }
     while (1)
     {
@@ -207,17 +206,32 @@ int main(int argc, char **argv, char **envp)
         if (*(data.s) == 0)
             break;
         unset_env(&data);
-        prt_env(&data);
     }
     printf("main: will call get command\n");//debug
     input = get_command();
-    while (strcmp(strimmed(input), "exit"))
+    printf("main(): received command is: %s\n", input);//debug
+    data.s = strimmed(input);
+    printf("main(): trimmed command is: %s\n", input);//debug
+    while (dif_str(strimmed(input), "exit"))
     {
+        if (!ft_strncmp(strimmed(input), "echo", 4) && white_space(strimmed(input)[4]))
+        {
+            my_echo(&data);
+        }
+        else if (!ft_strncmp(strimmed(input), "pwd", 3) && (white_space(strimmed(input)[3]) || strimmed(input)[3] == 0))
+            my_pwd(&data);
+        else if (!ft_strncmp(strimmed(input), "cd", 2) && white_space(strimmed(input)[2]))
+            my_cd(&data);
+        else if (!ft_strncmp(strimmed(input), "env", 3) && (white_space(strimmed(input)[3]) || strimmed(input)[3] == 0))
+            prt_env(&data);
         if (*strimmed(input))
             add_history(strimmed(input));
-        printf("%s\n", input);
+        //printf("%s\n", input);
         free (input);
         input = get_command();
+        printf("main(): received command is: %s\n", input);//debug
+        data.s = strimmed(input);
+        printf("main(): trimmed command is: %s\n", input);//debug
     }
     exit (0);
 }

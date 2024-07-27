@@ -1,4 +1,5 @@
 #include "minishell.h"
+
 void    print_list(t_s *list); //debug
 
 int     white_space(char c)
@@ -265,11 +266,12 @@ int add_env(t_d *d, char *new)
         nvs[j] = (*(d->env))[j];
         j++;
     }
-    nvs[j] = new;
+    nvs[j] = ft_strdup(new);
     nvs[j + 1] = NULL;
     printf("add_env(): new env list is ready, will free old list\n");//debug
-    //free(*(d->env));
+    free(*(d->env));
     *(d->env) = nvs;
+    printf("add_env(): new env address is %p\n", nvs);//debug
     printf("add_env(): old env list is freed, new list loaded\n");//debug
     return (1);    
 }
@@ -290,7 +292,7 @@ char    *get_name(char *s)
     int count;
     char    *re;
 
-    printf("get_name(): will get the name from: %s ... \n", s);//debug
+    //printf("get_name(): will get the name from: %s ... \n", s);//debug
     re = s;
     count = 0;
     while (*s != '=' && *s != 0)
@@ -299,9 +301,9 @@ char    *get_name(char *s)
             count++;
         s++;
     }
-    printf("get_name(): name lenth: %d, string is %s ... \n", count, re);//debug
+    //printf("get_name(): name lenth: %d, string is %s ... \n", count, re);//debug
     s = re;
-    printf("get_name(): name lenth: %d, string is %s ... \n", count, s);//debug
+    //printf("get_name(): name lenth: %d, string is %s ... \n", count, s);//debug
     re = malloc(count + 1);
     if (re == NULL)
         return (NULL);
@@ -313,10 +315,10 @@ char    *get_name(char *s)
             re[count++] = *s;
         s++;
     }
-    printf("get_name(): name: %s\n", re);//debug
+    //printf("get_name(): name: %s\n", re);//debug
     return (re);
 }
-
+//todelete is the name of the env
 void    remove_env(t_d *d, char *todelete)
 {
     char    **env;
@@ -349,7 +351,7 @@ int unset_env(t_d *d)
 {
     t_s     *ss;
     t_s     *temp;
-    char    *todelete;
+    char    *key_todelete;
 
     printf("unset_env(): received string is %s\n", d->s);//debug
     ss = into_ss(d->s);
@@ -360,9 +362,9 @@ int unset_env(t_d *d)
     {
         if (valid_env(temp->s) == 0)
         {
-            todelete = get_name(temp->s);
-            printf("unset_env(): env key to be deleted is %s\n", todelete);//debug
-            remove_env(d, todelete);
+            key_todelete = get_name(temp->s);
+            printf("unset_env(): env key to be deleted is %s\n", key_todelete);//debug
+            remove_env(d, key_todelete);
             temp = temp->next;
         }
     }
