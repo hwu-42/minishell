@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   test01.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mrios-he <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/07/27 16:29:23 by mrios-he          #+#    #+#             */
+/*   Updated: 2024/07/27 16:29:33 by mrios-he         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,8 +35,25 @@ typedef	struct {
 	char	*input;
 	t_list	**head;
 	int		*j;
+	int		*i;
+	char	word[1024];
 	char	*token;
 }	DollarSignParams;
+
+typedef struct {
+	char *input;
+	t_list **head;
+	char token[1024];
+	int j;
+} QuoteParams;
+
+typedef struct {
+    char *input;
+    t_list **head;
+    int *i;
+    int *j;
+    char token[1024];
+} WordParams;
 
 int	ft_strcmp(const char *s1, const char *s2)
 {
@@ -185,7 +214,7 @@ void set_type(t_list **head, const char *token, int is_first)
 {
 	if (is_first)
 		append_node(head, token, CMD);
-	if (ft_strcmp(token, "<") == 0 || ft_strcmp(token, ">") == 0
+	else if (ft_strcmp(token, "<") == 0 || ft_strcmp(token, ">") == 0
 		|| ft_strcmp(token, ">>") == 0 || ft_strcmp(token, "<<") == 0)
 		append_node(head, token, RED);
 	else if (ft_strcmp(token, "|") == 0)
@@ -204,28 +233,32 @@ void set_type(t_list **head, const char *token, int is_first)
 		append_node(head, token, ARG);
 }
 
-void add_token(t_list **head, char *token, int *j, int is_first, int combine) {
-    token[*j] = '\0';
-    if (combine) {
-        t_list *last_node = *head;
-        while (last_node && last_node->next) {
-            last_node = last_node->next;
-        }
-        if (last_node && last_node->type == ARG) {
-            size_t old_length = ft_strlen(last_node->token);
-            last_node->token = (char *)realloc(last_node->token, old_length + *j + 1);
-            if (last_node->token == NULL) {
-                printf("Memory allocation error\n");
-                exit(1);
-            }
-            ft_memcpy(last_node->token + old_length, token, *j + 1);
-        } else {
-            set_type(head, token, is_first);
-        }
-    } else {
-        set_type(head, token, is_first);
-    }
-    *j = 0;
+void add_token(t_list **head, char *token, int *j, int is_first, int combine)
+{
+	t_list	*last_node;
+	size_t	old_length;
+
+	token[*j] = '\0';
+	if (combine)
+	{
+		last_node = *head;
+		while (last_node && last_node->next)
+			last_node = last_node->next;
+		if (last_node && last_node->type == ARG)
+		{
+			old_length = ft_strlen(last_node->token);
+			last_node->token = (char *)realloc(last_node->token, old_length + *j + 1);
+			if (last_node->token == NULL)
+			{
+				printf("Memory allocation error\n");
+				exit(1);
+			}
+			ft_memcpy(last_node->token + old_length, token, *j + 1);
+		} else
+			set_type(head, token, is_first);
+	} else
+		set_type(head, token, is_first);
+	*j = 0;
 }
 
 int is_operator(char c)
@@ -233,35 +266,54 @@ int is_operator(char c)
 	return (c == '|' || c == '<' || c == '>');
 }
 
-int process_word(char *input, t_list **head, int start, int is_first) {
-    char token[1024];
-    int i = start;
-    int j = 0;
-    int is_env_var = 0;
+void handle_dollar_sign_in_word(WordParams *params, int is_first)
+{
+    if (*(params->j) > 0)
+        add_token(params->head, params->token, params->j, is_first, 0);
+    params->token[(*(params->j))++] = params->input[(*(params->i))++];
+    while (ft_isalnum(params->input[*(params->i)]) || params->input[*(params->i)] == '{')
+        params->token[(*(params->j))++] = params->input[(*(params->i))++];
+    params->token[*(params->j)] = '\0';
+    append_node(params->head, params->token, ENV);
+    *(params->j) = 0;
+}
 
-    while (input[i] != '\0' && !ft_is_space(input[i]) &&
-           input[i] != '\'' && input[i] != '"' &&
-           !is_operator(input[i])) {
-        if (input[i] == '$') {
-            is_env_var = 1;
-            if (j > 0) {
-                add_token(head, token, &j, is_first, 0);
-            }
-            token[j++] = input[i++];
-            while (ft_isalnum(input[i]) || input[i] == '{') {
-                token[j++] = input[i++];
-            }
-            token[j] = '\0';
-            append_node(head, token, ENV);
-            j = 0;
-            continue ;
-        } else {
-            token[j++] = input[i++];
+
+int process_word_loop(WordParams *params, int is_first, int *is_env_var)
+{
+    while (params->input[*(params->i)] != '\0' && !ft_is_space(params->input[*(params->i)])
+		&& params->input[*(params->i)] != '\'' && params->input[*(params->i)] != '"'
+		&& !is_operator(params->input[*(params->i)]))
+	{
+        if (params->input[*(params->i)] == '$')
+		{
+            *is_env_var = 1;
+            handle_dollar_sign_in_word(params, is_first);
         }
+		else
+            params->token[(*(params->j))++] = params->input[(*(params->i))++];
     }
-    if (j > 0) {
-        add_token(head, token, &j, is_first, is_env_var);
-    }
+    return *(params->i);
+}
+
+
+int process_word(char *input, t_list **head, int start, int is_first)
+{
+    WordParams params;
+    int i;
+    int j;
+    int is_env_var;
+
+    i = start;
+    j = 0;
+    is_env_var = 0;
+    params.input = input;
+    params.head = head;
+    params.i = &i;
+    params.j = &j;
+    process_word_loop(&params, is_first, &is_env_var);
+    if (j > 0)
+        add_token(head, params.token, &j, is_first, is_env_var);
     return (i - start);
 }
 
@@ -286,102 +338,117 @@ int	process_operator(char *input, t_list **head, int start)
 
 int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
 {
-	int start = i;
-    int j = 0;
+	int start;
+	int j;
 
-    params.token[j++] = params.input[i++];
-    while (params.input[i] != '\0' && (ft_isalnum(params.input[i]) || params.input[i] == '_'))
+	start = 1;
+	j = 0;
+	params.token[j++] = params.input[i++];
+	while (params.input[i] != '\0' && (ft_isalnum(params.input[i])
+		|| params.input[i] == '_'))
 	{
-        if (j < 1023)
-            params.token[j++] = params.input[i++];
-        else
-            break ;
-    }
-    params.token[j] = '\0';
-    add_token(params.head, params.token, &j, 0, 0);
-    return (i);
+		if (j < 1023)
+			params.token[j++] = params.input[i++];
+		else
+			break ;
+	}
+	params.token[j] = '\0';
+	add_token(params.head, params.token, &j, 0, 0);
+	return (i);
 }
 
-
-int process_quotes(char *input, t_list **head, int start, int is_first) {
-    char quote_char;
-    int i;
-    char token[1024];
-    int j;
-
-    j = 0;
-    i = start;
-    quote_char = input[i++];
-
-    while (input[i] != quote_char && input[i] != '\0') {
-        if (quote_char == '\'') {
-            token[j++] = input[i++];
-        } 
-        else if (quote_char == '"') {
-            if (input[i] == '$') {
-                if (j > 0) {
-                    add_token(head, token, &j, is_first, 0);
-                }
-                token[j++] = input[i++];
-                while (isalnum(input[i]) || input[i] == '_') {
-                    token[j++] = input[i++];
-                }
-                token[j] = '\0';
-                append_node(head, token, ENV);
-                j = 0;
-            } else {
-                token[j++] = input[i++];
-            }
-        }
-    }
-
-    if (input[i] == quote_char)
-        i++;
-
-    if (j > 0) {
-        token[j] = '\0';
-        if (quote_char == '\'') {
-            append_node(head, token, ARG);
-        } else {
-            add_token(head, token, &j, is_first, 0);
-        }
-    }
-
-    return (i - start);
-}
-
-
-
-void tokenize_and_classify(char *input, t_list **head)
+void process_quote_body(QuoteParams *params, char quote_char, int *i, int is_first)
 {
-	int is_first = 1;
-    int i = 0;
-
-    while (input[i] != '\0')
+	while (params->input[*i] != quote_char && params->input[*i] != '\0')
 	{
-        while (ft_is_space(input[i]))
-            i++;  
-        if (input[i] != '\0')
-		{  
-            if (input[i] == '\'' || input[i] == '"')
-                i += process_quotes(input, head, i, is_first);
-            else if (is_operator(input[i]))
-                i += process_operator(input, head, i);
-            else
+		if (quote_char == '\'')
+			params->token[params->j++] = params->input[(*i)++];
+		else if (quote_char == '"')
+		{
+			if (params->input[*i] == '$')
 			{
-                if (input[i] == '$')
-				{
-                    DollarSignParams params = {input, head, &i, malloc(1024)};
-                    i = handle_dollar_sign(params, i, 0);
-                    free(params.token);
-                } else
-                    i += process_word(input, head, i, is_first);
-                if (is_first)
-                    is_first = 0;
-            }
-        }
-    }
+				if (params->j > 0)
+					add_token(params->head, params->token, &params->j, is_first, 0);
+				params->token[params->j++] = params->input[(*i)++];
+				while (isalnum(params->input[*i]) || params->input[*i] == '_')
+					params->token[params->j++] = params->input[(*i)++];
+				params->token[params->j] = '\0';
+				append_node(params->head, params->token, ENV);
+				params->j = 0;
+			}
+			else
+				params->token[params->j++] = params->input[(*i)++];
+		}
+	}
 }
+
+int	process_quotes(char *input, t_list **head, int start, int is_first)
+{
+	QuoteParams params;
+	int		i;
+	char quote_char;
+
+	params.input = input;
+	params.head = head;
+	params.j = 0;
+	i = start;
+	quote_char = input[i++];
+	process_quote_body(&params, quote_char, &i, is_first);
+	if (input[i] == quote_char)
+		i++;
+	if (params.j > 0)
+	{
+		params.token[params.j] = '\0';
+		if (quote_char == '\'')
+			append_node(params.head, params.token, ARG);
+		else
+			add_token(params.head, params.token, &params.j, is_first, 0);
+	}
+	return (i - start);
+}
+
+void	process_token(char *input, t_list **head, int *i, int *is_first)
+{
+	DollarSignParams params;
+
+	if (input[*i] == '\'' || input[*i] == '"')
+		*i += process_quotes(input, head, *i, *is_first);
+	else if (is_operator(input[*i]))
+		*i += process_operator(input, head, *i);
+	else
+	{
+		if (input[*i] == '$')
+		{
+			params.input = input;
+			params.head = head;
+			params.i = i;
+			params.token = malloc(1024);
+			*i = handle_dollar_sign(params, *i, 0);
+			free(params.token);
+		}
+		else
+			*i += process_word(input, head, *i, *is_first);
+		if (*is_first)
+			*is_first = 0;
+	}
+}
+
+void	tokenize_and_classify(char *input, t_list **head)
+{
+	int is_first;
+	int i;
+
+	is_first = 1;
+	i = 0;
+	while (input[i] != '\0')
+	{
+		while (ft_is_space(input[i]))
+			i++;
+		if (input[i] != '\0')
+			process_token(input, head, &i, &is_first);
+	}
+}
+
 
 void	print_list(t_list *head)
 {
@@ -406,10 +473,10 @@ void	free_list(t_list *head)
 	}
 }
 
-int main(void) {
+int main(void)
+{
 	t_list *head = NULL;
-	char *input = "Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo 'This is a test' | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF";
-
+	char *input = " Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo This is a test | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF";
 	tokenize_and_classify(input, &head);
 	print_list(head);
 	free_list(head);
