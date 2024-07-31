@@ -8,7 +8,7 @@ int dequoted_size(char *s)
     int count;
     int inquote;
 
-    printf("dequoted_size(): start to count string %s\n", s);//debug
+    //printf("dequoted_size(): start to count string %s\n", s);//debug
     count = 0;
     inquote = 0;
     while (*s)
@@ -25,9 +25,11 @@ int dequoted_size(char *s)
             count++;
         s++;
     }
-    printf("dequoted_size(): size is %d\n", count);//debug
+    //printf("dequoted_size(): size is %d\n", count);//debug
     return (count);
 }
+
+// dequoted *s will be stored in *t
 void    dequoted_string(char *s, char *t)
 {
     int inquote;
@@ -50,17 +52,34 @@ void    dequoted_string(char *s, char *t)
     *t = 0;
 }
 
+//non: is -n on of off
 int    my_echo(t_d *d)
 {
     t_s     *ss;
     t_s     *temp;
     char    *s;
+    int     non;
 
+    non = 0;
     printf("my_echo(): received string is %s\n", d->s);//debug
     ss = into_ss(d->s);
     printf("my_echo(): splited ");//debug
     print_list(ss);//debug
     temp = ss->next;
+    if (temp)
+    {
+        s = malloc(dequoted_size(temp->s) + 1);
+        if (s == NULL)
+            return (0);
+        dequoted_string(temp->s, s);
+        if (s[0] == '-')
+            if (s[1] == 'n')
+                if (s[2] == 0)
+                {
+                    non = 1;
+                    temp = temp->next;
+                }
+    }
     printf("my_echo(): result for echo is:\n");//debug
     while (temp)
     {
@@ -74,7 +93,8 @@ int    my_echo(t_d *d)
             printf(" ");
         temp = temp->next;
     }
-    printf("\n");
+    if (!non)
+        printf("\n");
     free_list(&ss);
     return (1);
 }
@@ -102,6 +122,11 @@ char    *get_env_value(t_d *d, char *key)
 
 void    my_pwd(t_d *d)
 {
+    printf("%s\n", get_pwd(d));
+}
+
+char    *get_pwd(t_d *d)
+{
     char    **env;
 
     env = *(d->env);
@@ -113,7 +138,7 @@ void    my_pwd(t_d *d)
         else
             break;
     }
-    printf("%s\n", *env + 4);
+    return (ft_strdup(*env + 4));
 }
 
 void    remove_back_slash(char *s)
@@ -191,11 +216,16 @@ void    concat_path(char *dest, char *s)
         }
         else
         {
+            //printf("concat_path(): dest: %s, s: %s\n", dest, s);//debug
             while (*s != '/' && *s)
                 *i++ = *s++;
+            //printf("concat_path(): now the dest: %s\n", dest);//debug
             if (*s == '/')
                 *i++ = *s++;
+            //printf("concat_path(): now the dest: %s\n", dest);//debug
         }
+        *i = 0;
+        //printf("concat_path(): now the dest: %s\n", dest);//debug
     }
 }
 
@@ -267,10 +297,10 @@ int my_cd(t_d *d)
             break;
     }
     free(d->s);
-    d->s = malloc(ft_strlen(*env) + ft_strlen(new) + 1);
+    d->s = malloc(ft_strlen(*env) + ft_strlen(new) + 2);
     if (d->s == NULL)
         return (0);
-    ft_memset(d->s, 0, ft_strlen(*env) + ft_strlen(new) + 1);
+    ft_memset(d->s, 0, ft_strlen(*env) + ft_strlen(new) + 2);
     if (parse_path(d, new, *env + 4, d->s) == 0)
         return (0);
     remove_env(d, "PWD");

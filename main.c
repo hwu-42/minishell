@@ -178,7 +178,7 @@ int heap_env(t_d *d)
         *nvs++ = ft_strdup(*key++);
     return (1);
 }
-
+/*
 int main(int argc, char **argv, char **envp)
 {
     char    *input;
@@ -235,3 +235,4 @@ int main(int argc, char **argv, char **envp)
     }
     exit (0);
 }
+*/

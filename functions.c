@@ -137,6 +137,9 @@ t_s    *into_ss(char *s)
     return (re);
 }
 
+//this function check if the charactor is allowed for env var name
+//@ is allowed as expending with @(var_name) is allowed
+// int in meaning is the char c in a quotation or not
 int correct_char(int in, char c)
 {
     if (in == 1 && (ft_isalnum(c) || c == '_' || c == '\''))
@@ -145,8 +148,12 @@ int correct_char(int in, char c)
         return (1);
     if (in == 0 && (ft_isalnum(c) || c == '_' || c == '\'' || c == '\"'))
         return (1);
+    if ((in == 0 || in == 2) && c == '@')
+        return (1);
     return (0);
 }
+
+//env name can only contain alpnum _, can not star with num
 //in: inquotation, 0 for not, 1 for ', 2 for "
 int valid_env(char *s)
 {

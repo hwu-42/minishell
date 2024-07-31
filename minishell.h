@@ -12,7 +12,60 @@
 #include <dirent.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#define MAXMM 2
+#define MAXMM 1024
+#define ARGU 2
+
+// here we deal with only <, <<, >, >>, |, ||, &&, ()
+// <if not in quotatin>: |, ||, &&, (, ), marks the end of a command
+// <if not in quotatin>: |, ||, &&, (, ), white_spaces marks the end of a argument
+// <if not in single quotatin>:$ marks a env var; ::to expand
+// <if not in quotatin && not in type 'command'>: marks a wildcard char; ::to expand
+
+// type: 
+// ***************************** member of command
+// command:  1  *s      1
+// argument: 2  *s      0-n
+// heredoc:  3  *s      0-n
+// output1:  4  *s      1
+// output2:  5  *s      1
+// ***************************** logical operators
+// pipe:     6  null    
+// or:       7  null
+// and:      8  null
+// (:        9  null
+// ):        10 null
+
+typedef struct s_token_node
+{
+    int str;
+    int ttp;
+    char    *s;
+    struct s_token_node *next;
+}   t_t;
+
+//tp: command 1;
+typedef struct s_command_node
+{
+    int     tp;
+    char    *cmd;
+    struct s_command_node   *next;
+    struct s_command_node   *last;
+}   t_c;
+
+// son: ' is on, don " is on, pon ( is on, full_line parsing a full_line?
+// oon: || is on, aon: && is on, von: | is on vertical-bar
+typedef struct s_status
+{
+    int     son;
+    int     don;
+    int     pon;
+    int     oon;
+    int     aon;
+    int     von;
+    int     fll;
+    int     n;
+    char    *s;
+}   t_st;
 
 typedef struct s_data
 {
@@ -28,6 +81,15 @@ typedef struct s_string_list
     char    *s;
 }   t_s;
 
+
+//str: 0 if not a literal string, 1 literal string
+typedef struct s_token_node
+{
+    int str;
+    int ttp;
+    char    *s;
+    struct s_token_node *next;
+}   t_t;
 /*
 void    mfree(void * p);
 void    *mmalloc(size_t t);
@@ -50,8 +112,11 @@ t_s     *into_ss(char *s);
 void    free_list(t_s **l);
 void    remove_env(t_d *d, char *todelete);
 int     add_env(t_d *d, char *new);
+char    *get_env_value(t_d *d, char *key);
 
 void    my_pwd(t_d *d);
 int     my_cd(t_d *d);
+char    *get_pwd(t_d *d);
+void    concat_path(char *dest, char *s);
 
 #endif

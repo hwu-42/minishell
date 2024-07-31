@@ -34,7 +34,7 @@ $(NAME): $(OBJ) | $(LIB)
 
 clean:
 	$(MAKE) -C $(LIB_PATH) fclean
-	rm $(OBJ)
+	rm -f $(OBJ)
 
 fclean: clean
 	rm -f $(NAME)
