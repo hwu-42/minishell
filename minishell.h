@@ -15,6 +15,8 @@
 #define MAXMM 1024
 #define ARGU 2
 
+
+/*spec 01 start*/
 // here we deal with only <, <<, >, >>, |, ||, &&, ()
 // <if not in quotatin>: |, ||, &&, (, ), marks the end of a command
 // <if not in quotatin>: |, ||, &&, (, ), white_spaces marks the end of a argument
@@ -23,31 +25,36 @@
 
 // type: 
 // ***************************** member of command
-// command:  1  *s      1
-// argument: 2  *s      0-n
-// heredoc:  3  *s      0-n
-// output1:  4  *s      1
-// output2:  5  *s      1
+// command:  0  *s      1
+// argument: 1  *s      0-n
+// ifile:    2  *s      0-n       <
+// heredoc:  3  *s      0-n       <<EOF
+// output1:  4  *s      0,1       >
+// output2:  5  *s      0,1       >>
 // ***************************** logical operators
 // pipe:     6  null    
 // or:       7  null
 // and:      8  null
 // (:        9  null
 // ):        10 null
+/*spec 01 end*/
 
-typedef struct s_token_node
-{
-    int str;
-    int ttp;
-    char    *s;
-    struct s_token_node *next;
-}   t_t;
-
-//tp: command 1;
+//list of command prpared for execution:
+//tp(type) as in spec 01;
+//cmd: command + args, first is executable, others are expended string as arguments
+//cmd is a pointer to area of pointer which point to strings, the NULL indicate the end of this area
+//heredoc: expaned string as stdin input when is executable is running
+//ifile: input file as stdin input when is executable is running
+//otype: output type, -1 for write to file; -2 for append to file; 1 for stdout; other as pipe num;
+//ofile: output file name, NULL when otype > 0;
 typedef struct s_command_node
 {
     int     tp;
-    char    *cmd;
+    char    **cmd;
+    char    *heredoc;
+    char    *ifile;
+    int     otype;
+    char    *ofile;
     struct s_command_node   *next;
     struct s_command_node   *last;
 }   t_c;
@@ -90,12 +97,12 @@ typedef struct s_token_node
     char    *s;
     struct s_token_node *next;
 }   t_t;
-/*
+
+
 void    mfree(void * p);
 void    *mmalloc(size_t t);
 int    heap_mngr(void *new, int add);
 void    clean_heaps(void ***p);
-*/
 
 char    *get_command(void);
 char    *unclosed_eofs(int add, char *eof);
@@ -118,5 +125,7 @@ void    my_pwd(t_d *d);
 int     my_cd(t_d *d);
 char    *get_pwd(t_d *d);
 void    concat_path(char *dest, char *s);
+
+int     valid_check(t_c *c);
 
 #endif

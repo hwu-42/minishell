@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   test01.c                                           :+:      :+:    :+:   */
+/*   tokens_temp.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mrios-he <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: hwu <hwu@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/27 16:29:23 by mrios-he          #+#    #+#             */
-/*   Updated: 2024/07/27 16:29:33 by mrios-he         ###   ########.fr       */
+/*   Updated: 2024/08/01 11:02:46 by hwu              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -476,9 +476,23 @@ void	free_list(t_list *head)
 int main(void)
 {
 	t_list *head = NULL;
-	char *input = " Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo This is a test | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF";
+	char *input = "cmd1 <<EOF \" asdf asfdasdf\n asfsdff\nfasfd\" \nasdfsdffasfavads\n asf asf d \n \nEOF";
 	tokenize_and_classify(input, &head);
 	print_list(head);
 	free_list(head);
 	return 0;
 }
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define ARG 0
+#define CMD 1
+#define RED 2
+#define PIP 3
+#define ENV 4
+#define PAR 5
+#define AND 6
+#define OR 7
