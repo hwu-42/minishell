@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   tokens_temp.c                                      :+:      :+:    :+:   */
+/*   test01.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: hwu <hwu@student.42.fr>                    +#+  +:+       +#+        */
+/*   By: mrios-he <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/27 16:29:23 by mrios-he          #+#    #+#             */
-/*   Updated: 2024/08/01 11:02:46 by hwu              ###   ########.fr       */
+/*   Updated: 2024/07/27 16:29:33 by mrios-he         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,23 +15,28 @@
 #include <string.h>
 #include <ctype.h>
 
-#define ARG 0
-#define CMD 1
-#define RED 2
-#define PIP 3
-#define ENV 4
-#define PAR 5
-#define AND 6
-#define OR 7
+#define CMD  0
+#define ARG  1
+#define IFIL 2
+#define HDOC 3
+#define OUT1 4
+#define OUT2 5
+#define PIP  6
+#define OR   7
+#define AND  8
+#define PAR1 9
+#define PAR2 10
 
-typedef	struct t_list {
+typedef	struct t_list
+{
 	char			*token;
 	int				type;
 	struct t_list	*prev;
 	struct t_list	*next;
 }	t_list;
 
-typedef	struct {
+typedef	struct
+{
 	char	*input;
 	t_list	**head;
 	int		*j;
@@ -40,20 +45,22 @@ typedef	struct {
 	char	*token;
 }	DollarSignParams;
 
-typedef struct {
+typedef struct
+{
 	char *input;
 	t_list **head;
 	char token[1024];
 	int j;
-} QuoteParams;
+}	QuoteParams;
 
-typedef struct {
-    char *input;
-    t_list **head;
-    int *i;
-    int *j;
-    char token[1024];
-} WordParams;
+typedef struct
+{
+	char *input;
+	t_list **head;
+	int *i;
+	int *j;
+	char token[1024];
+}	WordParams;
 
 int	ft_strcmp(const char *s1, const char *s2)
 {
@@ -214,19 +221,24 @@ void set_type(t_list **head, const char *token, int is_first)
 {
 	if (is_first)
 		append_node(head, token, CMD);
-	else if (ft_strcmp(token, "<") == 0 || ft_strcmp(token, ">") == 0
-		|| ft_strcmp(token, ">>") == 0 || ft_strcmp(token, "<<") == 0)
-		append_node(head, token, RED);
+	else if (ft_strcmp(token, "<") == 0)
+		append_node(head, token, IFIL);
+	else if (ft_strcmp(token, "<<") == 0)
+		append_node(head, token, HDOC);
+	else if (ft_strcmp(token, ">") == 0)
+		append_node(head, token, OUT1);
+	else if (ft_strcmp(token, ">>") == 0)
+		append_node(head, token, OUT2);
 	else if (ft_strcmp(token, "|") == 0)
 		append_node(head, token, PIP);
 	else if (ft_strcmp(token, "&&") == 0)
 		append_node(head, token, AND);
 	else if (ft_strcmp(token, "||") == 0)
 		append_node(head, token, OR);
-	else if (ft_strcmp(token, "(") == 0 || ft_strcmp(token, ")") == 0)
-		append_node(head, token, PAR);
-	else if (token[0] == '$')
-		append_node(head, token, ENV);
+	else if (ft_strcmp(token, "(") == 0)
+		append_node(head, token, PAR1);
+	else if (ft_strcmp(token, ")") == 0)
+		append_node(head, token, PAR2);
 	else if (is_command(token))
 		append_node(head, token, CMD);
 	else
@@ -268,71 +280,91 @@ int is_operator(char c)
 
 void handle_dollar_sign_in_word(WordParams *params, int is_first)
 {
-    if (*(params->j) > 0)
-        add_token(params->head, params->token, params->j, is_first, 0);
-    params->token[(*(params->j))++] = params->input[(*(params->i))++];
-    while (ft_isalnum(params->input[*(params->i)]) || params->input[*(params->i)] == '{')
-        params->token[(*(params->j))++] = params->input[(*(params->i))++];
-    params->token[*(params->j)] = '\0';
-    append_node(params->head, params->token, ENV);
-    *(params->j) = 0;
+	if (*(params->j) > 0)
+		add_token(params->head, params->token, params->j, is_first, 0);
+	params->token[(*(params->j))++] = params->input[(*(params->i))++];
+	while (ft_isalnum(params->input[*(params->i)]) || params->input[*(params->i)] == '{' || params->input[*(params->i)] == '_')
+		params->token[(*(params->j))++] = params->input[(*(params->i))++];
 }
 
 
 int process_word_loop(WordParams *params, int is_first, int *is_env_var)
 {
-    while (params->input[*(params->i)] != '\0' && !ft_is_space(params->input[*(params->i)])
+	while (params->input[*(params->i)] != '\0' && !ft_is_space(params->input[*(params->i)])
 		&& params->input[*(params->i)] != '\'' && params->input[*(params->i)] != '"'
 		&& !is_operator(params->input[*(params->i)]))
 	{
-        if (params->input[*(params->i)] == '$')
+		if (params->input[*(params->i)] == '$')
 		{
-            *is_env_var = 1;
-            handle_dollar_sign_in_word(params, is_first);
-        }
+			*is_env_var = 1;
+			handle_dollar_sign_in_word(params, is_first);
+		}
 		else
-            params->token[(*(params->j))++] = params->input[(*(params->i))++];
-    }
-    return *(params->i);
+			params->token[(*(params->j))++] = params->input[(*(params->i))++];
+	}
+	return *(params->i);
 }
 
 
 int process_word(char *input, t_list **head, int start, int is_first)
 {
-    WordParams params;
-    int i;
-    int j;
-    int is_env_var;
+	WordParams params;
+	int i;
+	int j;
+	int is_env_var;
 
-    i = start;
-    j = 0;
-    is_env_var = 0;
-    params.input = input;
-    params.head = head;
-    params.i = &i;
-    params.j = &j;
-    process_word_loop(&params, is_first, &is_env_var);
-    if (j > 0)
-        add_token(head, params.token, &j, is_first, is_env_var);
-    return (i - start);
+	i = start;
+	j = 0;
+	is_env_var = 0;
+	params.input = input;
+	params.head = head;
+	params.i = &i;
+	params.j = &j;
+	process_word_loop(&params, is_first, &is_env_var);
+	if (j > 0)
+		add_token(head, params.token, &j, is_first, is_env_var);
+	return (i - start);
+}
+void	get_operator_token(char *input, char *token, int *i)
+{
+	int	j;
+
+	j = 0;
+	token[j++] = input[(*i)++];
+	if ((token[0] == '>' || token[0] == '<') && input[*i] == token[0])
+		token[j++] = input[(*i)++];
+	else if ((token[0] == '&' && input[*i] == '&') || (token[0] == '|'
+		&& input[*i] == '|'))
+		token[j++] = input[(*i)++];
+	token[j] = '\0';
+}
+
+void	append_operator_token(char *token, t_list **head)
+{
+	if (ft_strcmp(token, "&&") == 0)
+		append_node(head, token, AND);
+	else if (ft_strcmp(token, "||") == 0)
+		append_node(head, token, OR);
+	else if (ft_strcmp(token, ">") == 0)
+		append_node(head, token, OUT1);
+	else if (ft_strcmp(token, ">>") == 0)
+		append_node(head, token, OUT2);
+	else if (ft_strcmp(token, "<") == 0)
+		append_node(head, token, IFIL);
+	else if (ft_strcmp(token, "<<") == 0)
+		append_node(head, token, HDOC);
+	else
+		append_node(head, token, PIP);
 }
 
 int	process_operator(char *input, t_list **head, int start)
 {
 	char	token[3];
 	int		i;
-	int		j;
 
 	i = start;
-	j = 0;
-	token[j++] = input[i++];
-	if ((token[0] == '>' || token[0] == '<') && input[i] == token[0])
-		token[j++] = input[i++];
-	else if ((token[0] == '&' && input[i] == '&')
-		|| (token[0] == '|' && input[i] == '|'))
-		token[j++] = input[i++];
-	token[j] = '\0';
-	append_node(head, token, (ft_strcmp(token, "&&") == 0) ? AND : (ft_strcmp(token, "||") == 0) ? OR : PIP);
+	get_operator_token(input, token, &i);
+	append_operator_token(token, head);
 	return (i - start);
 }
 
@@ -345,7 +377,7 @@ int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
 	j = 0;
 	params.token[j++] = params.input[i++];
 	while (params.input[i] != '\0' && (ft_isalnum(params.input[i])
-		|| params.input[i] == '_'))
+		|| params.input[i] == '_' || params.input[i] == '{'))
 	{
 		if (j < 1023)
 			params.token[j++] = params.input[i++];
@@ -353,12 +385,23 @@ int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
 			break ;
 	}
 	params.token[j] = '\0';
-	add_token(params.head, params.token, &j, 0, 0);
+	while (params.input[i] != '\0' && ((params.input[i] != quote_char)
+		&& !ft_is_space(params.input[i])))
+	{
+		if (j < 1023)
+			params.token[j++] = params.input[i++];
+		else
+			break ;
+	}
+	params.token[j] = '\0';
 	return (i);
 }
 
+
 void process_quote_body(QuoteParams *params, char quote_char, int *i, int is_first)
 {
+	params->token[params->j++] = quote_char;
+	(*i)++;
 	while (params->input[*i] != quote_char && params->input[*i] != '\0')
 	{
 		if (quote_char == '\'')
@@ -367,42 +410,34 @@ void process_quote_body(QuoteParams *params, char quote_char, int *i, int is_fir
 		{
 			if (params->input[*i] == '$')
 			{
-				if (params->j > 0)
-					add_token(params->head, params->token, &params->j, is_first, 0);
 				params->token[params->j++] = params->input[(*i)++];
 				while (isalnum(params->input[*i]) || params->input[*i] == '_')
 					params->token[params->j++] = params->input[(*i)++];
-				params->token[params->j] = '\0';
-				append_node(params->head, params->token, ENV);
-				params->j = 0;
 			}
 			else
 				params->token[params->j++] = params->input[(*i)++];
 		}
 	}
+	params->token[params->j++] = quote_char;
+	(*i)++;
 }
 
 int	process_quotes(char *input, t_list **head, int start, int is_first)
 {
 	QuoteParams params;
-	int		i;
+	int     i;
 	char quote_char;
 
 	params.input = input;
 	params.head = head;
 	params.j = 0;
 	i = start;
-	quote_char = input[i++];
+	quote_char = input[i];
 	process_quote_body(&params, quote_char, &i, is_first);
-	if (input[i] == quote_char)
-		i++;
 	if (params.j > 0)
 	{
 		params.token[params.j] = '\0';
-		if (quote_char == '\'')
-			append_node(params.head, params.token, ARG);
-		else
-			add_token(params.head, params.token, &params.j, is_first, 0);
+		add_token(params.head, params.token, &params.j, is_first, 0);
 	}
 	return (i - start);
 }
@@ -476,23 +511,9 @@ void	free_list(t_list *head)
 int main(void)
 {
 	t_list *head = NULL;
-	char *input = "cmd1 <<EOF \" asdf asfdasdf\n asfsdff\nfasfd\" \nasdfsdffasfavads\n asf asf d \n \nEOF";
+	char *input = " Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo This is a test | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF";
 	tokenize_and_classify(input, &head);
 	print_list(head);
 	free_list(head);
 	return 0;
 }
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-#define ARG 0
-#define CMD 1
-#define RED 2
-#define PIP 3
-#define ENV 4
-#define PAR 5
-#define AND 6
-#define OR 7
