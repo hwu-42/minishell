@@ -15,7 +15,7 @@ int valid_check(t_c *c)
     {
         if (c->tp == 1)
             if (c->next)
-                if (c->next->tp == 1)
+                if (c->next->tp == 1 || c->next->tp == 9)
                     return (0);
         else if (c->tp == 6)
             if (c->next == NULL)

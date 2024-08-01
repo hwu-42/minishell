@@ -39,7 +39,9 @@
 // ):        10 null
 /*spec 01 end*/
 
-//list of command prpared for execution:
+//list of command prepared for execution:
+//id: should start from 3, corresponding the pipe it is using, as output type number < 3 
+//      are reserved for other output type.
 //tp(type) as in spec 01;
 //cmd: command + args, first is executable, others are expended string as arguments
 //cmd is a pointer to area of pointer which point to strings, the NULL indicate the end of this area
@@ -49,6 +51,7 @@
 //ofile: output file name, NULL when otype > 0;
 typedef struct s_command_node
 {
+    int     id;
     int     tp;
     char    **cmd;
     char    *heredoc;
@@ -98,6 +101,17 @@ typedef struct s_token_node
     struct s_token_node *next;
 }   t_t;
 
+//slevel, the start level of the current command block
+//ilevel, the level at present
+//* if after execute_one() slevel = i level,
+//  current shell should wait() all pid and return
+//  ilevel and slevel both start form 0, when encounter '(', fork() slevel=ilevel++;
+typedef struct s_status_of_current_execution
+{
+    int slevel;
+    int ilevel;
+    int exits;
+}   t_exe;
 
 void    mfree(void * p);
 void    *mmalloc(size_t t);
