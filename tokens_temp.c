@@ -34,33 +34,15 @@ typedef	struct t_list
 	struct t_list	*prev;
 	struct t_list	*next;
 }	t_list;
-
-typedef	struct
+typedef struct s_parser
 {
-	char	*input;
-	t_list	**head;
-	int		*j;
-	int		*i;
-	char	word[1024];
-	char	*token;
-}	DollarSignParams;
-
-typedef struct
-{
-	char *input;
-	t_list **head;
-	char token[1024];
-	int j;
-}	QuoteParams;
-
-typedef struct
-{
-	char *input;
-	t_list **head;
-	int *i;
-	int *j;
-	char token[1024];
-}	WordParams;
+    char	*input;
+    t_list	**head;
+    int		i;
+    int		is_first;
+    char	token[1024];
+    int		j;
+}	t_parser;
 
 int	ft_strcmp(const char *s1, const char *s2)
 {
@@ -114,7 +96,7 @@ char *ft_strdup(const char *s1)
 	if (rtn == NULL)
 		return NULL;
 	rtn = ft_memcpy(rtn, s1, len);
-	return rtn;
+	return (rtn);
 }
 
 t_list *create_node(const char *token, int type)
@@ -133,7 +115,20 @@ t_list *create_node(const char *token, int type)
 	new_node->next = NULL;
 	return (new_node);
 }
-
+/*
+ * The concatenate_tokens function takes three arguments: a pointer to a destination string, 
+ * and two source strings. It concatenates the two source strings with a space in between, 
+ * and stores the result in the destination string. If the destination string was previously 
+ * allocated, it is freed and a new block of memory is allocated for the new string.
+ * 
+ * The function first calculates the length of the new string, which is the sum of the lengths 
+ * of the two source strings plus 2 (one for the space and one for the null terminator). 
+ * It then allocates a block of memory of this size.
+ * 
+ * The function then copies the characters from the first source string to the new string, 
+ * followed by a space, and then the characters from the second source string. 
+ * It adds a null terminator at the end.
+ */
 void	concatenate_tokens(char **dest, const char *src1, const char *src2)
 {
 	size_t	new_len;
@@ -244,33 +239,47 @@ void set_type(t_list **head, const char *token, int is_first)
 	else
 		append_node(head, token, ARG);
 }
-
-void add_token(t_list **head, char *token, int *j, int is_first, int combine)
+/*
+ * The add_token function is responsible for adding a token to the linked list of tokens.
+ * It takes two arguments: a pointer to a t_parser struct and a flag indicating whether 
+ * the current token should be combined with the previous one.
+ *
+ * The function first null-terminates the current token. If the combine flag is set, 
+ * it finds the last node in the list and checks if its type is ARG. If it is, 
+ * it reallocates memory for the token in the last node to accommodate the current token, 
+ * and then appends the current token to it.
+ *
+ * If the combine flag is not set, or if the last node's type is not ARG, 
+ * it calls the set_type function to add the current token as a new node in the list.
+ *
+ * Finally, it resets the index of the current token to 0, ready for the next token.
+ */
+void add_token(t_parser *parser, int combine)
 {
-	t_list	*last_node;
-	size_t	old_length;
+    t_list	*last_node;
+    size_t	old_length;
 
-	token[*j] = '\0';
-	if (combine)
-	{
-		last_node = *head;
-		while (last_node && last_node->next)
-			last_node = last_node->next;
-		if (last_node && last_node->type == ARG)
-		{
-			old_length = ft_strlen(last_node->token);
-			last_node->token = (char *)realloc(last_node->token, old_length + *j + 1);
-			if (last_node->token == NULL)
-			{
-				printf("Memory allocation error\n");
-				exit(1);
-			}
-			ft_memcpy(last_node->token + old_length, token, *j + 1);
-		} else
-			set_type(head, token, is_first);
-	} else
-		set_type(head, token, is_first);
-	*j = 0;
+    parser->token[parser->j] = '\0';
+    if (combine)
+    {
+        last_node = *parser->head;
+        while (last_node && last_node->next)
+            last_node = last_node->next;
+        if (last_node && last_node->type == ARG)
+        {
+            old_length = ft_strlen(last_node->token);
+            last_node->token = (char *)realloc(last_node->token, old_length + parser->j + 1);
+            if (last_node->token == NULL)
+            {
+                printf("Memory allocation error\n");
+                exit(1);
+            }
+            ft_memcpy(last_node->token + old_length, parser->token, parser->j + 1);
+        } else
+            set_type(parser->head, parser->token, parser->is_first);
+    } else
+        set_type(parser->head, parser->token, parser->is_first);
+    parser->j = 0;
 }
 
 int is_operator(char c)
@@ -278,53 +287,53 @@ int is_operator(char c)
 	return (c == '|' || c == '<' || c == '>');
 }
 
-void handle_dollar_sign_in_word(WordParams *params, int is_first)
+/*
+ * The process_word_loop function is a helper function for process_word. 
+ * It takes a pointer to a t_parser struct as its argument.
+ *
+ * The function iterates over the characters in the input string until it encounters a null 
+ * character, a space, a quote, or an operator. For each character, it adds the character 
+ * to the current token and increments the indices of the current character and the current token.
+ *
+ * The function returns the index of the current character in the input string after the loop ends.
+ */
+int process_word_loop(t_parser *parser)
 {
-	if (*(params->j) > 0)
-		add_token(params->head, params->token, params->j, is_first, 0);
-	params->token[(*(params->j))++] = params->input[(*(params->i))++];
-	while (ft_isalnum(params->input[*(params->i)]) || params->input[*(params->i)] == '{' || params->input[*(params->i)] == '_')
-		params->token[(*(params->j))++] = params->input[(*(params->i))++];
-}
-
-
-int process_word_loop(WordParams *params, int is_first, int *is_env_var)
-{
-	while (params->input[*(params->i)] != '\0' && !ft_is_space(params->input[*(params->i)])
-		&& params->input[*(params->i)] != '\'' && params->input[*(params->i)] != '"'
-		&& !is_operator(params->input[*(params->i)]))
+    while (parser->input[parser->i] != '\0' && !ft_is_space(parser->input[parser->i])
+        && parser->input[parser->i] != '\'' && parser->input[parser->i] != '"'
+        && !is_operator(parser->input[parser->i]))
 	{
-		if (params->input[*(params->i)] == '$')
-		{
-			*is_env_var = 1;
-			handle_dollar_sign_in_word(params, is_first);
-		}
-		else
-			params->token[(*(params->j))++] = params->input[(*(params->i))++];
-	}
-	return *(params->i);
+        parser->token[parser->j++] = parser->input[parser->i++];
+    }
+    return (parser->i);
 }
 
-
-int process_word(char *input, t_list **head, int start, int is_first)
-{
-	WordParams params;
-	int i;
-	int j;
-	int is_env_var;
-
-	i = start;
-	j = 0;
-	is_env_var = 0;
-	params.input = input;
-	params.head = head;
-	params.i = &i;
-	params.j = &j;
-	process_word_loop(&params, is_first, &is_env_var);
-	if (j > 0)
-		add_token(head, params.token, &j, is_first, is_env_var);
-	return (i - start);
+/*
+ * The process_word function is responsible for processing a word in the input string.
+ *
+ * The function calls process_word_loop to add the characters of the word to the current token. 
+ * It then calls add_token to add the token to the list, with the combine flag set to 0, 
+ * indicating that the token should not be combined with the previous one.
+ *
+ * Finally, it resets the index of the current token to 0, ready for the next token.
+ */
+void process_word(t_parser *parser) {
+    parser->i = process_word_loop(parser);
+    add_token(parser, 0);
 }
+
+/*
+ * The get_operator_token function is responsible for processing an operator in the input string. 
+ * It takes three arguments: a pointer to the input string, a pointer to the current token, 
+ * and a pointer to the index of the current character in the input string.
+ *
+ * The function first adds the current character to the token. If the current character is 
+ * a '>' or '<', and the next character is the same, it adds the next character to the token as well.
+ * If the current character is '&' or '|', and the next character is the same, it also adds 
+ * the next character to the token.
+ *
+ * Finally, it null-terminates the token.
+ */
 void	get_operator_token(char *input, char *token, int *i)
 {
 	int	j;
@@ -357,134 +366,120 @@ void	append_operator_token(char *token, t_list **head)
 		append_node(head, token, PIP);
 }
 
-int	process_operator(char *input, t_list **head, int start)
+/*
+ * The process_operator function is responsible for processing an operator in the input string. 
+ * It takes a pointer to a t_parser struct as its argument.
+ *
+ * The function first adds the current character to the token. If the current character is 
+ * a '|' or '<' or '>', and the next character is the same, it adds the next character to the token as well.
+ *
+ * Finally, it calls add_token to add the token to the list, with the combine flag set to 0, 
+ * indicating that the token should not be combined with the previous one.
+ */
+void process_operator(t_parser *parser)
 {
-	char	token[3];
-	int		i;
-
-	i = start;
-	get_operator_token(input, token, &i);
-	append_operator_token(token, head);
-	return (i - start);
+    parser->token[parser->j++] = parser->input[parser->i++];
+    if ((parser->token[parser->j - 1] == '|' && parser->input[parser->i] == '|') ||
+        (parser->token[parser->j - 1] == '<' && parser->input[parser->i] == '<') ||
+        (parser->token[parser->j - 1] == '>' && parser->input[parser->i] == '>'))
+	{
+        parser->token[parser->j++] = parser->input[parser->i++];
+    }
+    add_token(parser, 0);
 }
 
-int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
+/*
+ * The process_quote_body function is a helper function for process_quotes. 
+ * It takes a pointer to a t_parser struct and a character representing the quote type as its arguments.
+ *
+ * The function iterates over the characters in the input string until it encounters a matching quote 
+ * character or a null character. For each character, it adds the character to the current token 
+ * and increments the indices of the current character and the current token.
+ *
+ * The function returns the index of the current character in the input string after the loop ends.
+ */
+int process_quote_body(t_parser *parser, char quote_char)
 {
-//	int start;
-	int j;
-
-//	start = 1;
-	j = 0;
-	params.token[j++] = params.input[i++];
-	while (params.input[i] != '\0' && (ft_isalnum(params.input[i])
-		|| params.input[i] == '_' || params.input[i] == '{'))
-	{
-		if (j < 1023)
-			params.token[j++] = params.input[i++];
-		else
-			break ;
-	}
-	params.token[j] = '\0';
-	while (params.input[i] != '\0' && ((params.input[i] != quote_char)
-		&& !ft_is_space(params.input[i])))
-	{
-		if (j < 1023)
-			params.token[j++] = params.input[i++];
-		else
-			break ;
-	}
-	params.token[j] = '\0';
-	return (i);
+    while (parser->input[parser->i] != quote_char && parser->input[parser->i] != '\0')
+        parser->token[parser->j++] = parser->input[parser->i++];
+    return (parser->i);
 }
 
-
-void process_quote_body(QuoteParams *params, char quote_char, int *i, int is_first)
+/*
+ * The process_quotes function is responsible for processing a quoted string in the input string. 
+ * It takes a pointer to a t_parser struct as its argument.
+ *
+ * The function first adds the opening quote to the token. It then calls process_quote_body to add 
+ * the characters inside the quotes to the current token. If the current character in the input string 
+ * is a matching quote, it adds the closing quote to the token.
+ *
+ * Finally, it calls add_token to add the token to the list, with the combine flag set to 0, 
+ * indicating that the token should not be combined with the previous one.
+ */
+void process_quotes(t_parser *parser)
 {
-	is_first = is_first;
-	params->token[params->j++] = quote_char;
-	(*i)++;
-	while (params->input[*i] != quote_char && params->input[*i] != '\0')
+    char	quote_char;
+
+	quote_char = parser->input[parser->i];
+    parser->token[parser->j++] = quote_char;
+    parser->i++;
+    parser->i = process_quote_body(parser, quote_char);
+    if (parser->input[parser->i] == quote_char)
 	{
-		if (quote_char == '\'')
-			params->token[params->j++] = params->input[(*i)++];
-		else if (quote_char == '"')
-		{
-			if (params->input[*i] == '$')
-			{
-				params->token[params->j++] = params->input[(*i)++];
-				while (isalnum(params->input[*i]) || params->input[*i] == '_')
-					params->token[params->j++] = params->input[(*i)++];
-			}
-			else
-				params->token[params->j++] = params->input[(*i)++];
-		}
-	}
-	params->token[params->j++] = quote_char;
-	(*i)++;
+        parser->token[parser->j++] = quote_char;
+        parser->i++;
+    }
+    if (parser->input[parser->i] == '\'' || parser->input[parser->i] == '"') {
+        process_quotes(parser);
+    } else {
+        add_token(parser, 0);
+    }
 }
 
-int	process_quotes(char *input, t_list **head, int start, int is_first)
+/*
+ * The process_token function is responsible for processing a token in the input string. 
+ * It takes a pointer to a t_parser struct as its argument.
+ *
+ * The function first checks the type of the current character in the input string. 
+ * If it's a quote, it calls process_quotes to process a quoted string. 
+ * If it's an operator, it calls process_operator to process an operator. 
+ * Otherwise, it calls process_word to process a word.
+ *
+ * If the token being processed is the first one in the input string, 
+ * the function sets the is_first flag to 0, indicating that the first token has been processed.
+ */
+void process_token(t_parser *parser)
 {
-	QuoteParams params;
-	int     i;
-	char quote_char;
-
-	params.input = input;
-	params.head = head;
-	params.j = 0;
-	i = start;
-	quote_char = input[i];
-	process_quote_body(&params, quote_char, &i, is_first);
-	if (params.j > 0)
+    if (parser->input[parser->i] == '\'' || parser->input[parser->i] == '"')
 	{
-		params.token[params.j] = '\0';
-		add_token(params.head, params.token, &params.j, is_first, 0);
-	}
-	return (i - start);
+        process_quotes(parser);
+    } else if (is_operator(parser->input[parser->i]))
+        process_operator(parser);
+    else
+	{
+        process_word(parser);
+        if (parser->is_first)
+            parser->is_first = 0;
+    }
 }
 
-void	process_token(char *input, t_list **head, int *i, int *is_first)
+void tokenize_and_classify(t_list **head, char *input)
 {
-	DollarSignParams params;
+    t_parser parser;
 
-	if (input[*i] == '\'' || input[*i] == '"')
-		*i += process_quotes(input, head, *i, *is_first);
-	else if (is_operator(input[*i]))
-		*i += process_operator(input, head, *i);
-	else
-	{
-		if (input[*i] == '$')
-		{
-			params.input = input;
-			params.head = head;
-			params.i = i;
-			params.token = malloc(1024);
-			*i = handle_dollar_sign(params, *i, 0);
-			free(params.token);
-		}
-		else
-			*i += process_word(input, head, *i, *is_first);
-		if (*is_first)
-			*is_first = 0;
-	}
-}
+    parser.input = input;
+    parser.head = head;
+    parser.i = 0;
+    parser.is_first = 1;
+    parser.j = 0;
 
-void	tokenize_and_classify(char *input, t_list **head)
-{
-	int is_first;
-	int i;
-
-	if (input == NULL)
-		return ;
-	is_first = 1;
-	i = 0;
-	while (input[i] != '\0')
-	{
-		while (ft_is_space(input[i]))
-			i++;
-		if (input[i] != '\0')
-			process_token(input, head, &i, &is_first);
-	}
+    while (parser.input[parser.i] != '\0')
+    {
+        if (ft_is_space(parser.input[parser.i]))
+            parser.i++;
+        else
+            process_token(&parser);
+    }
 }
 
 /*
@@ -498,7 +493,7 @@ static void	print_list(t_list *head)
 		current = current->next;
 	}
 }
-*/
+
 
 void	free_list(t_list *head)
 {
@@ -512,14 +507,13 @@ void	free_list(t_list *head)
 	}
 }
 
-/*
+
 int main(void)
 {
 	t_list *head = NULL;
-	char *input = " Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo This is a test | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF";
-	tokenize_and_classify(input, &head);
+	char *input = " Hi (\"Hello, $USER!\" >  output.txt ) && cat \" ( output.txt ) \" >> log.txt || echo This  is a test | grep test | export VAR=123 | ' echo $VAR ' <<EOF\nLine1\nLine2\nEOF | export HELLO=123 A";
+	tokenize_and_classify(&head, input);
 	print_list(head);
 	free_list(head);
 	return 0;
-}
-*/
+}*/
