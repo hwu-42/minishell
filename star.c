@@ -64,7 +64,7 @@ int     find_active_star(char *s)
     return (0);
 }
 
-t_t *add_token(t_t *head, char *s, int str, int type)
+t_t *add_it_to_token(t_t *head, char *s, int str, int type)
 {
     while (head)
         head = head->next;
@@ -218,7 +218,7 @@ int    star_substitude(t_t *tk, t_d *d)
     while (*f)
     {
         if (match(*f, tk->s))
-            if (add_token(file_match, *f, 1, ARGU) == NULL)
+            if (add_it_to_token(file_match, *f, 1, ARGU) == NULL)
                 return (-1);
         f++;
     }
@@ -231,7 +231,7 @@ int    star_substitude(t_t *tk, t_d *d)
     return (1);
 }
 /*
-*/ //debug
+
 int main(void)
 {
     char    *input;
@@ -247,5 +247,4 @@ int main(void)
 }
 
 
-/* //debug
 */

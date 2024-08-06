@@ -95,7 +95,7 @@ int    my_echo(t_d *d)
     }
     if (!non)
         printf("\n");
-    free_list(&ss);
+    wfree_list(&ss);
     return (1);
 }
 
@@ -269,7 +269,7 @@ int parse_path(t_d *d, char *s, char *old, char *new)
     return (1);
 }
 
-int my_cd(t_d *d)
+int my_cd(t_d *d)//change to use t_c *c
 {
     char    **env;
     char    *new;

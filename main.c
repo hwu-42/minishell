@@ -178,7 +178,20 @@ int heap_env(t_d *d)
         *nvs++ = ft_strdup(*key++);
     return (1);
 }
-/*
+
+static void	print_list(t_list *head)
+{
+	t_list	*current;
+
+	if (head == NULL)
+        return ;
+    current = head;
+	while (current != NULL) {
+		printf("Token: %s, Type: %d\n", current->token, current->type);
+		current = current->next;
+	}
+}
+
 int main(int argc, char **argv, char **envp)
 {
     char    *input;
@@ -186,6 +199,7 @@ int main(int argc, char **argv, char **envp)
 //    char    *temp = NULL;
 //    char    **args;
 //    char    *eof;
+    t_list *head = NULL;
 
     if (argc > 0)
         argv[0] = argv[0];
@@ -209,12 +223,27 @@ int main(int argc, char **argv, char **envp)
     }
     printf("main: will call get command\n");//debug
     input = get_command();
-    printf("main(): received command is: %s\n", input);//debug
+//    printf("main(): received command is:\n");//debug
+//    printf("%s\n", input);//debug
+    printf("main(): strip the command\n");//debug
     data.s = strimmed(input);
-    printf("main(): trimmed command is: %s\n", input);//debug
-    while (dif_str(strimmed(input), "exit"))
+
+//    printf("main(): trimmed command is: %s\n", data.s);//debug
+    while (dif_str(data.s, "exit"))
     {
-        if (!ft_strncmp(strimmed(input), "echo", 4) && white_space(strimmed(input)[4]))
+        printf("main(): start tokenization\n");//debug
+        tokenize_and_classify(data.s, &head);
+        printf("main(): tokenization done\n");//debug
+        print_list(head);
+        free_list(head);
+        head = NULL;
+        if (input)
+            free (input);
+        input = get_command();
+        printf("main(): received command\n");//debug
+        data.s = strimmed(input);
+        printf("main(): strip done\n");//debug
+/*        if (!ft_strncmp(strimmed(input), "echo", 4) && white_space(strimmed(input)[4]))
         {
             my_echo(&data);
         }
@@ -231,8 +260,7 @@ int main(int argc, char **argv, char **envp)
         input = get_command();
         printf("main(): received command is: %s\n", input);//debug
         data.s = strimmed(input);
-        printf("main(): trimmed command is: %s\n", input);//debug
+        printf("main(): trimmed command is: %s\n", input);//debug*/
     }
     exit (0);
 }
-*/

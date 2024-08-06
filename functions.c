@@ -88,7 +88,7 @@ int add_node(t_s **list, char *s)
         temp = temp->next;
     return (add_node(&temp->next, s));
 }
-void free_list(t_s **l)
+void wfree_list(t_s **l)
 {
     t_s *temp;
 
@@ -128,7 +128,7 @@ t_s    *into_ss(char *s)
         if (!add_node(&re, sub_str(s, i)))
         {
             printf("mem error\n");
-            free_list(&re);
+            wfree_list(&re);
             return (NULL);
         }
         print_list(re);//debug
@@ -375,7 +375,7 @@ int unset_env(t_d *d)
             temp = temp->next;
         }
     }
-    free_list(&ss);
+    wfree_list(&ss);
     return (1);
 }
 
@@ -404,6 +404,6 @@ int    export_env(t_d *d)
             printf("'%s': not a valid indentifier\n", temp->s);
         temp = temp->next;
     }
-    free_list(&ss);
+    wfree_list(&ss);
     return (1);
 }

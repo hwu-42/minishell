@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   test01.c                                           :+:      :+:    :+:   */
+/*   tokens_temp.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mrios-he <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: hwu <hwu@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/27 16:29:23 by mrios-he          #+#    #+#             */
-/*   Updated: 2024/07/27 16:29:33 by mrios-he         ###   ########.fr       */
+/*   Updated: 2024/08/03 12:49:05 by hwu              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -370,10 +370,10 @@ int	process_operator(char *input, t_list **head, int start)
 
 int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
 {
-	int start;
+//	int start;
 	int j;
 
-	start = 1;
+//	start = 1;
 	j = 0;
 	params.token[j++] = params.input[i++];
 	while (params.input[i] != '\0' && (ft_isalnum(params.input[i])
@@ -400,6 +400,7 @@ int	handle_dollar_sign(DollarSignParams params, int i, char quote_char)
 
 void process_quote_body(QuoteParams *params, char quote_char, int *i, int is_first)
 {
+	is_first = is_first;
 	params->token[params->j++] = quote_char;
 	(*i)++;
 	while (params->input[*i] != quote_char && params->input[*i] != '\0')
@@ -473,6 +474,8 @@ void	tokenize_and_classify(char *input, t_list **head)
 	int is_first;
 	int i;
 
+	if (input == NULL)
+		return ;
 	is_first = 1;
 	i = 0;
 	while (input[i] != '\0')
@@ -484,8 +487,8 @@ void	tokenize_and_classify(char *input, t_list **head)
 	}
 }
 
-
-void	print_list(t_list *head)
+/*
+static void	print_list(t_list *head)
 {
 	t_list	*current;
 
@@ -495,6 +498,7 @@ void	print_list(t_list *head)
 		current = current->next;
 	}
 }
+*/
 
 void	free_list(t_list *head)
 {
@@ -508,6 +512,7 @@ void	free_list(t_list *head)
 	}
 }
 
+/*
 int main(void)
 {
 	t_list *head = NULL;
@@ -517,3 +522,4 @@ int main(void)
 	free_list(head);
 	return 0;
 }
+*/

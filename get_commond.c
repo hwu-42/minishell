@@ -8,7 +8,7 @@ char        *get_eof(char *s);
 
 int spcial_char(char c)
 {
-    if (*ft_strrchr("'\"<>()|&", c) == c || white_space(c))
+    if (ft_strrchr("'\"<>()|&", c)|| white_space(c))
         return (1);
     return (0);
 }
@@ -21,8 +21,12 @@ char    *get_eof(char *s)
     printf("get_eof: s: %s\n", s);//debug
     while(white_space(*s))
         s++;
-    if (*s == 0)
-        return (NULL);
+        
+    printf("get_eof: white space skipped, now *s: %c\n", *s);//debug
+
+    //if (*s == 0)
+    //    return (NULL);
+    //printf("get_eof: stat to count...");//debug
     i = 0;
     while (*(s + i) && !spcial_char(*(s + i)))
         i++;
@@ -268,12 +272,13 @@ char    *get_command(void)
         printf("get command(): n= %d\n", n); //debug
         if (n == 0)
         {//debug
-            printf("get_command(): done\n");//debug
+            printf("get_command(): last line got, temp is %s, input is %s,\n", temp, input);//debug
             tt = ft_strjoin(temp, input);
             printf("get_command(): now, temp is %p\n", temp);//debug
             free(temp);
             free(input);
             printf("get_command(): done, input is: %s\n", tt);//debug
+            printf("get_command(): return to caller\n");//debug
             return (tt);
             //return (ft_strjoin(temp, input));
         }//debug
