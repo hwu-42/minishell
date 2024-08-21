@@ -56,7 +56,7 @@ char    *unclosed_eofs(int add, char *eof)
         }
         if (i == MAXMM)
         {
-            printf("unclose_eofs(): given eof not found, check your program!!\n");//debug
+            printf("unclose_eofs(): no unclosed eof anymore!!\n");//debug
             return (NULL);
         }
         else
@@ -102,11 +102,11 @@ char    *strimmed(char *s)
     if (*s == 0)
         return (s);
     end = s + ft_strlen(s) - 1;
-    while (end >= s && *end == ' ')
+    while (end >= s && white_space(*end))
     {
         *end-- = '\0';
     }
-    while (*s == ' ')
+    while (white_space(*s))
     {
         s++;
     }
@@ -121,6 +121,7 @@ void    parse_command(char **args)
         return;
     } else if (pid == 0) {
         // Child process
+        signal(SIGQUIT, SIG_DFL);
         execve(args[0], args, NULL);
         perror("execve"); // execve returns only on error
         exit(EXIT_FAILURE);
@@ -178,61 +179,148 @@ int heap_env(t_d *d)
         *nvs++ = ft_strdup(*key++);
     return (1);
 }
-/*
+
+/* //debug
+static void	print_list(t_list *head)
+{
+	t_list	*current;
+
+	if (head == NULL)
+        return ;
+    current = head;
+	while (current != NULL) {
+		printf("Token: %s, Type: %d\n", current->token, current->type);
+		current = current->next;
+	}
+}
+*/
+
+void    free_in(t_c *cmd)
+{
+    t_c *temp;
+
+    temp = cmd->in;
+    while (temp)
+    {
+        mfree(temp->ifile);
+        cmd->in = NULL;
+        cmd = temp;
+        temp = temp->in;
+        mfree(cmd);
+    }
+}
+
+void    free_out(t_c *cmd)
+{
+    t_c *temp;
+
+    temp = cmd->out;
+    while (temp)
+    {
+        mfree(temp->ofile);
+        cmd->out = NULL;
+        cmd = temp;
+        temp = temp->out;
+        mfree(cmd);
+    }
+}
+
+void    free_command_list(t_c *cmd)
+{
+    t_c *temp;
+    char    **s;
+
+    while (cmd)
+    {
+        //printf("free_command_line(): now to free one command node\n");//debug
+        if (cmd->in)
+            free_in(cmd);
+        if (cmd->out)
+            free_out(cmd);
+        if (cmd->tp < 2)
+        {
+            s = cmd->cmd;
+            while (*s)
+            {
+                mfree(*s);
+                s++;
+            }
+            mfree (s);
+        }
+        temp = cmd->next;
+        mfree(cmd);
+        cmd = temp;
+        //printf("free_command_line(): free one command node done!!!\n");//debug
+    }
+
+}
+
+void    signal_handle(int sig)
+{
+    if (sig == SIGINT)
+    {
+        rl_replace_line("", 0);
+        write(STDOUT_FILENO, "\n", 1);
+        rl_on_new_line();
+        rl_redisplay();
+    }
+}
+
+
 int main(int argc, char **argv, char **envp)
 {
     char    *input;
     t_d     data;
-//    char    *temp = NULL;
-//    char    **args;
-//    char    *eof;
+    t_list  *tokens;
+    t_c     *cmd;
 
+    signal(SIGINT, signal_handle);
+    signal(SIGQUIT, SIG_IGN);
     if (argc > 0)
         argv[0] = argv[0];
     data.env = &envp;
     if(!heap_env(&data))
         exit(1);
-    prt_env(&data); //debug
-    while (1)
-    {
-        data.s = readline("new env to edd:\n");
-        if (*(data.s) == 0)
-            break;
-        export_env(&data);
-    }
-    while (1)
-    {
-        data.s = readline("env to unset:\n");
-        if (*(data.s) == 0)
-            break;
-        unset_env(&data);
-    }
+    //prt_env(&data); //debug
+
     printf("main: will call get command\n");//debug
     input = get_command();
-    printf("main(): received command is: %s\n", input);//debug
-    data.s = strimmed(input);
-    printf("main(): trimmed command is: %s\n", input);//debug
+//    printf("main(): received command is:\n");//debug
+//    printf("%s\n", input);//debug
+ //   printf("main(): strip the command\n");//debug
+
+//    printf("main(): trimmed command is: %s\n", data.s);//debug
     while (dif_str(strimmed(input), "exit"))
     {
-        if (!ft_strncmp(strimmed(input), "echo", 4) && white_space(strimmed(input)[4]))
-        {
-            my_echo(&data);
-        }
-        else if (!ft_strncmp(strimmed(input), "pwd", 3) && (white_space(strimmed(input)[3]) || strimmed(input)[3] == 0))
-            my_pwd(&data);
-        else if (!ft_strncmp(strimmed(input), "cd", 2) && white_space(strimmed(input)[2]))
-            my_cd(&data);
-        else if (!ft_strncmp(strimmed(input), "env", 3) && (white_space(strimmed(input)[3]) || strimmed(input)[3] == 0))
-            prt_env(&data);
-        if (*strimmed(input))
-            add_history(strimmed(input));
-        //printf("%s\n", input);
-        free (input);
-        input = get_command();
-        printf("main(): received command is: %s\n", input);//debug
         data.s = strimmed(input);
-        printf("main(): trimmed command is: %s\n", input);//debug
+        printf("main(): trimmed command is:----------------\n%s\n", data.s);//debug
+        if (data.s)
+            add_history(data.s);
+        //printf("%s\n", input);
+        tokens = tokenize_input(data.s);
+        printf("main(): tokens list is:----------------\n");//debug
+        print_token_list(tokens);
+        cmd =load_token_into_cmd(tokens);
+        if (cmd)
+        {
+           // printf("main(): i'm a separator****in command structure:\n"); //debug
+            //print_cmd_list(cmd); debug
+            convert_arg_2_string(cmd, &data);
+          //  printf("main(): i'm a separator****after expansion, cmd is:\n"); //debug
+          //  print_cmd_list(cmd);
+           // printf("main(): i'm a separator******execute cmd:\n"); //debug
+            execute_command_line(cmd, &data);
+            //printf("main(): now to free command line\n");//debug
+            free_command_list(cmd);
+        }
+        //printf("main(): now to free input buffer line\n");//debug
+        mfree(input);
+        input = get_command();
+        if (input == NULL) {
+            // ctrl-D: exit the shell
+            exit(0);
+        }
+        printf("main(): received command is: %s\n", input);//debug
     }
     exit (0);
 }
-*/
