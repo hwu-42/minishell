@@ -314,7 +314,8 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
         printf("%d\n", exits);
     } else if (strcmp(cmd_str, "echo $? + $?") == 0) {
         printf("%d\n", exits + exits);
-    } else {
+    }
+    else {
         pid_t pid = fork();
         if (pid == -1) {
             perror("fork");
@@ -326,8 +327,12 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
             signal(SIGQUIT, SIG_DFL);
             if (execvp(c->cmd[0], c->cmd) == -1) {
                 perror("execvp");  // execvp only returns on error
-                ret_val = 127;  // Update ret_val to 127
-                exit(ret_val);  // Use 127 to indicate command not found
+                if (errno == EACCES) {
+                ret_val = 126;  // File is not executable
+                } else {
+                    ret_val = 127;  // Command not found
+                }
+                exit(ret_val);
             }
         } 
         else
@@ -338,7 +343,15 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
                 perror("waitpid");
                 ret_val = -1;
             }
-        exits = status >> 8;
+            if (WIFSIGNALED(status)) {
+    // If the child process was terminated by a signal,
+    // set the exit status to 128 plus the signal number.
+                exits = 128 + WTERMSIG(status);
+            } else {
+    // Otherwise, use the exit status of the child process.
+                exits = WEXITSTATUS(status);
+            }
+        //exits = status >> 8;
         }
     }
     free(cmd_str);
