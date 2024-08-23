@@ -265,6 +265,10 @@ char    *get_command(void)
         print_eofs();
         printf("get command(): input= %s\n", input); //debug
         n = parse_line(input, &st);
+         if (input == NULL) {
+            // ctrl-D: exit the shell
+            exit(0);
+        }
         printf("get command(): n= %d\n", n); //debug
         if (n == 0)
         {//debug
