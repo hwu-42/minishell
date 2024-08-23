@@ -55,47 +55,36 @@ void    dequoted_string(char *s, char *t)
 //non: is -n on of off
 int    my_echo(t_d *d)
 {
-    t_s     *ss;
-    t_s     *temp;
-    char    *s;
-    int     non;
+   char **ss;
+    int non;
 
     non = 0;
-    printf("my_echo(): received string is %s\n", d->s);//debug
-    ss = into_ss(d->s);
-    printf("my_echo(): splited ");//debug
-    print_list(ss);//debug
-    temp = ss->next;
-    if (temp)
+    d=d; //debug
+    ss = c->cmd;
+    ss++;
+    // echo -n -nnnnnnnnnn
+    while (*ss && !strncmp(*ss, "-n", 2))
     {
-        s = malloc(dequoted_size(temp->s) + 1);
-        if (s == NULL)
-            return (0);
-        dequoted_string(temp->s, s);
-        if (s[0] == '-')
-            if (s[1] == 'n')
-                if (s[2] == 0)
-                {
-                    non = 1;
-                    temp = temp->next;
-                }
+        // If the argument is -n or starts with -nnnnn, don't print a newline
+        if ((*ss)[2] == '\0' || ((*ss)[2] == 'n' && strspn(*ss + 2, "n") == strlen(*ss + 2)))
+        {
+            non = 1;
+            ss++;
+        }
+        else
+        {
+            break;
+        }
     }
-    printf("my_echo(): result for echo is:\n");//debug
-    while (temp)
+    while (*ss)
     {
-        s = malloc(dequoted_size(temp->s) + 1);
-        if (s == NULL)
-            return (0);
-        dequoted_string(temp->s, s);
-        printf("%s", s);
-        free(s);
-        if (temp->next)
+        printf("%s", *ss);
+        ss++;
+        if (*ss != NULL)
             printf(" ");
-        temp = temp->next;
     }
     if (!non)
         printf("\n");
-    free_list(&ss);
     return (1);
 }
 
