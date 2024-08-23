@@ -247,11 +247,34 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
 {/*
     int next;
     char    *temp;
+    int saved_stdout;
+    int saved_stdin;
 
-    printf("execute_one(): start cmd[%d]:\n", c->id);//debug
+    saved_stdout = dup(STDOUT_FILENO);
+    saved_stdin = dup(STDIN_FILENO);
+    printf("execute_one(): start cmd[%d], stdout fid is %d:\n", c->id, saved_stdout);//debug
+    // exit | exit | exit
+    if (strcmp(c->cmd[0], "exit") == 0)
+    {
+        if (c->cmd[1])  // If there is an argument to the exit command
+        {
+            int exit_status = atoi(c->cmd[1]);  // Convert the argument to an integer
+            exit(exit_status);  // Return the exit status
+        }
+        else
+            return 0;
+    }
     if (is_builtin(c->cmd))
     {
+        setup_pipe(c, d, e);
+        close(((e->pipeid)[c->id])[0]);
+        close(((e->pipeid)[c->id])[1]);
+        printf("execute_one(): pipe[%d] is closed\n", c->id);//debug
         call_builtin(is_builtin(c->cmd), d, c);
+        dup2(saved_stdin, STDIN_FILENO);
+        dup2(saved_stdout, STDOUT_FILENO);
+        close(saved_stdout);
+        close(saved_stdin);
         return (d->status);
     }
     else
@@ -275,25 +298,30 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
         e->pid[e->ilevel] = fork();
         if (e->pid[e->ilevel] == 0)
         {   
-            //set_pipe(c, d, e);
-            //close_pipe(e);
-            signal(SIGQUIT, SIG_DFL);
-            printf("execute_one(): in child process will set up pips\n");//debug
-            //setup_pipe(c, d, e);
-            //close_pipe(e);
-            printf("execute_one(): in child process will call funciton\n");//debug
+            //printf("execute_one(): in child process will set up pips\n");//debug
+            setup_pipe(c, d, e);
+            close_pipe(c, e);
+            printf("execute_one(): in child process will call cmd[%d]\n", c->id);//debug
             if (execve(c->cmd[0], c->cmd, *(d->env)) == -1)
                 exit(errno);
+            //printf("execute_one(): in child process cmd[%d] is finished\n", c->id);//debug
             exit(0);
         }
         else
         {
+            close(((e->pipeid)[c->id])[0]);
+            close(((e->pipeid)[c->id])[1]);
+            printf("execute_one(): pipe[%d] is closed\n", c->id);//debug
+            usleep(100);
             next = next_logic(c);
-            if (next == 7 || next == 8 || next == 0)
-                waitpid(e->pid[e->i], &e->exits, 0);
+            if (next == 7 || next == 8 || next == 0 || next == 10)
+            {
+                printf("execute_one(): now to wait subprocess: from %d to %d\n", e->slevel, e->ilevel);//debug
+                wait_cocurrent(e);
+            }
         }
     }
-    printf("execute_one(): end\n");//debug
+    //printf("execute_one(): end\n");//debug
     return (1);*/
     static int exits;
     int ret_val = 0;
