@@ -243,38 +243,152 @@ int next_logic(t_c *c)
     return (0);
 }
 
-int    execute_one(t_c *c, t_d *d, t_exe *e)
-{/*
+char **replace_exit_status_in_cmd(char **cmd, int exits) {
+    int cmd_size = 0;
+    int i = 0;
+    while (cmd[i] != NULL) {
+        cmd_size += strlen(cmd[i]) + 1; // +1 for the space or null terminator
+        i++;
+    }
+
+    // Allocate memory for the command string
+    char *cmd_str = malloc(cmd_size);
+    if (cmd_str == NULL) {
+        perror("malloc");
+        return NULL;
+    }
+
+    // Copy the first token
+    strcpy(cmd_str, cmd[0]);
+
+    // Concatenate the rest of the tokens with spaces in between
+    i = 1;
+    while (cmd[i] != NULL) {
+        strncat(cmd_str, " ", 255 - strlen(cmd_str));
+        strncat(cmd_str, cmd[i], 255 - strlen(cmd_str));
+        i++;
+    }
+
+    // Create a new command string to hold the modified command
+    char *new_cmd_str = malloc(cmd_size);
+    if (new_cmd_str == NULL) {
+        perror("malloc");
+        free(cmd_str);
+        return NULL;
+    }
+
+    // Tokenize the command string and replace occurrences of "$?" with the last exit status
+    char *start = cmd_str;
+    char *end;
+    i = 0;
+    while ((end = strchr(start, ' ')) != NULL) {
+        // If the token is "$?", replace it with the last exit status
+        if (strncmp(start, "$?", end - start) == 0) {
+            char exit_status_str[10];
+            int j = 0;
+            int temp = exits;
+            if (temp == 0) {
+                // Special case for when exits is 0
+                exit_status_str[j++] = '0';
+            } else {
+                while (temp != 0) {
+                    exit_status_str[j++] = (temp % 10) + '0';
+                    temp /= 10;
+                }
+            }
+            exit_status_str[j] = '\0';
+            // Reverse the string
+            int start = 0;
+            int end = j - 1;
+            while (start < end) {
+                char temp = exit_status_str[start];
+                exit_status_str[start] = exit_status_str[end];
+                exit_status_str[end] = temp;
+                start++;
+                end--;
+            }
+            cmd[i] = strdup(exit_status_str);
+        } else {
+            cmd[i] = strndup(start, end - start);
+        }
+
+        // Move to the next token
+        start = end + 1;
+        i++;
+    }
+
+    // Handle the last token
+    if (strcmp(start, "$?") == 0) {
+        char exit_status_str[10];
+        int j = 0;
+        int temp = exits;
+        if (temp == 0) {
+            // Special case for when exits is 0
+            exit_status_str[j++] = '0';
+        } else {
+            while (temp != 0) {
+                exit_status_str[j++] = (temp % 10) + '0';
+                temp /= 10;
+            }
+        }
+        exit_status_str[j] = '\0';
+        // Reverse the string
+        int start = 0;
+        int end = j - 1;
+        while (start < end) {
+            char temp = exit_status_str[start];
+            exit_status_str[start] = exit_status_str[end];
+            exit_status_str[end] = temp;
+            start++;
+            end--;
+        }
+        cmd[i] = strdup(exit_status_str);
+    } else {
+        cmd[i] = strdup(start);
+    }
+    i++;
+    cmd[i] = NULL; // Null-terminate the array
+    // Free the old command string
+    free(cmd_str);
+    cmd_str = NULL;
+    return cmd;
+}
+
+int execute_one(t_c *c, t_d *d, t_exe *e)
+{
     int next;
-    char    *temp;
+    char *temp;
     int saved_stdout;
     int saved_stdin;
+    static int exits = 0;
 
     saved_stdout = dup(STDOUT_FILENO);
     saved_stdin = dup(STDIN_FILENO);
-    printf("execute_one(): start cmd[%d], stdout fid is %d:\n", c->id, saved_stdout);//debug
+    printf("execute_one(): start cmd[%d], stdout fid is %d:\n", c->id, saved_stdout); // debug
     // exit | exit | exit
     if (strcmp(c->cmd[0], "exit") == 0)
     {
         if (c->cmd[1])  // If there is an argument to the exit command
         {
-            int exit_status = atoi(c->cmd[1]);  // Convert the argument to an integer
-            exit(exit_status);  // Return the exit status
+            exit(atoi(c->cmd[1]));  // Return the exit status
         }
         else
             return 0;
     }
+    // Replace "$?" with the last exit status in the command
+    c->cmd = replace_exit_status_in_cmd(c->cmd, exits);
     if (is_builtin(c->cmd))
     {
         setup_pipe(c, d, e);
         close(((e->pipeid)[c->id])[0]);
         close(((e->pipeid)[c->id])[1]);
-        printf("execute_one(): pipe[%d] is closed\n", c->id);//debug
+        printf("execute_one(): pipe[%d] is closed\n", c->id); // debug
         call_builtin(is_builtin(c->cmd), d, c);
         dup2(saved_stdin, STDIN_FILENO);
         dup2(saved_stdout, STDOUT_FILENO);
         close(saved_stdout);
         close(saved_stdin);
+        exits = 0;
         return (d->status);
     }
     else
@@ -282,108 +396,77 @@ int    execute_one(t_c *c, t_d *d, t_exe *e)
         temp = c->cmd[0];
         c->cmd[0] = full_function_name(c->cmd[0], d);
         free(temp);
-        printf("execute_one(): full command name is %s\n", c->cmd[0]);//debug
-        if (c->cmd[0] == NULL)
-        {
+        printf("execute_one(): full command name is %s\n", c->cmd[0]); // debug
+        if (c->cmd[0] == NULL) {
             printf("execute_one(): no such file\n");
-            return (-1);
+            exits = 127;  // Command not found
+            return -1;
         }
-        //c->cmd[0] = ft_strjoin("/bin/", c->cmd[0]);
-        if (access(c->cmd[0], X_OK) == -1)
-        {
+        // Check if the command is executable
+        if (access(c->cmd[0], X_OK) == -1) {
             printf("execute_one(): access command fail\n");
-            return (-1);
+            exits = 126;  // Command is not executable
+            return -1;
         }
-        (e->ilevel)++;
+        e->ilevel++;
         e->pid[e->ilevel] = fork();
-        if (e->pid[e->ilevel] == 0)
-        {   
-            //printf("execute_one(): in child process will set up pips\n");//debug
+        if (e->pid[e->ilevel] == -1) {
+           perror("fork");
+                exits = -1;
+        }
+        else if (e->pid[e->ilevel] == 0)
+        {
+            signal(SIGQUIT, SIG_DFL);
             setup_pipe(c, d, e);
             close_pipe(c, e);
-            printf("execute_one(): in child process will call cmd[%d]\n", c->id);//debug
             if (execve(c->cmd[0], c->cmd, *(d->env)) == -1)
-                exit(errno);
-            //printf("execute_one(): in child process cmd[%d] is finished\n", c->id);//debug
+            {
+                perror("execve");  // execvp only returns on error
+                if (errno == EACCES) {
+                    exits = 126;  // File is not executable
+                } else if (errno == ENOENT) {
+                    exits = 127; 
+                }else{
+                    exits = 1;  // Some other error
+                }
+                    exit(exits);
+            }
             exit(0);
         }
         else
         {
             close(((e->pipeid)[c->id])[0]);
             close(((e->pipeid)[c->id])[1]);
-            printf("execute_one(): pipe[%d] is closed\n", c->id);//debug
             usleep(100);
             next = next_logic(c);
             if (next == 7 || next == 8 || next == 0 || next == 10)
             {
                 printf("execute_one(): now to wait subprocess: from %d to %d\n", e->slevel, e->ilevel);//debug
-                wait_cocurrent(e);
+                exits = wait_cocurrent(e);
             }
-        }
-    }
-    //printf("execute_one(): end\n");//debug
-    return (1);*/
-    static int exits;
-    int ret_val = 0;
-    char *cmd_str = malloc(256);  // Allocate memory for the command string
-    if (cmd_str == NULL) {
-        perror("malloc");
-        return -1;
-    }
-    strcpy(cmd_str, c->cmd[0]);  // Copy the first token
-    // Concatenate the rest of the tokens with spaces in between
-    int i = 1;
-    while (c->cmd[i] != NULL) {
-        strncat(cmd_str, " ", 255 - strlen(cmd_str));
-        strncat(cmd_str, c->cmd[i], 255 - strlen(cmd_str));
-        i++;
-    }
-    if (strcmp(cmd_str, "echo $?") == 0) {
-        printf("%d\n", exits);
-    } else if (strcmp(cmd_str, "echo $? + $?") == 0) {
-        printf("%d\n", exits + exits);
-    }
-    else {
-        pid_t pid = fork();
-        if (pid == -1) {
-            perror("fork");
-            ret_val = -1;
-        }
-        else if (pid == 0)
-        {
-            // Child process
-            signal(SIGQUIT, SIG_DFL);
-            if (execvp(c->cmd[0], c->cmd) == -1) {
-                perror("execvp");  // execvp only returns on error
-                if (errno == EACCES) {
-                ret_val = 126;  // File is not executable
-                } else {
-                    ret_val = 127;  // Command not found
-                }
-                exit(ret_val);
-            }
-        } 
-        else
-        {
-            // Parent process
-            int status;
-            if (waitpid(pid, &status, 0) == -1) {
+            else
+            {
+                int status;
+                if (waitpid(e->pid[e->ilevel], &status, 0) == -1)
+                {
                 perror("waitpid");
-                ret_val = -1;
-            }
-            if (WIFSIGNALED(status)) {
+                exits = -1;
+                }
+                else // Only update 'exits' if it hasn't been set by wait_cocurrent
+                {
+                if (WIFSIGNALED(status)) {
     // If the child process was terminated by a signal,
     // set the exit status to 128 plus the signal number.
-                exits = 128 + WTERMSIG(status);
-            } else {
+                 exits = 128 + WTERMSIG(status);
+                  } else {
     // Otherwise, use the exit status of the child process.
-                exits = WEXITSTATUS(status);
+                    exits = WEXITSTATUS(status);
+                 }  
+                }     
             }
-        //exits = status >> 8;
         }
     }
-    free(cmd_str);
-    return ret_val;
+    return 1;   
 }
 
 
